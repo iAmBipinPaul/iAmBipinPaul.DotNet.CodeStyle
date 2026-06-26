@@ -202,9 +202,21 @@ int Run(string repoRoot, string? sln, string? @ref, bool whole, bool list, bool 
         fa.AddRange(files);
     }
 
-    int formatExit = RunInherit("dotnet", [.. fa]);
-    if (formatExit != 0) Console.WriteLine($"dotnet format exited {formatExit}.");
-    else Console.WriteLine(reorderExit == 0 ? "Done." : $"Formatted, but cleanupcode exited {reorderExit}.");
+    int formatExit = RunDotnetFormat([.. fa], out string manualSummary);
+    if (formatExit != 0)
+    {
+        Console.WriteLine($"dotnet format exited {formatExit}.");
+    }
+    else
+    {
+        Console.WriteLine(reorderExit == 0 ? "Done." : $"Formatted, but cleanupcode exited {reorderExit}.");
+        if (manualSummary.Length > 0)
+        {
+            // Framed explicitly so humans AND LLM agents read it as informational,
+            // not a failure: these rules simply have no automatic code fix.
+            Console.WriteLine($"Note: formatting SUCCEEDED. These rules have no auto-fix and need a manual edit (expected, not an error): {manualSummary}.");
+        }
+    }
 
     return formatExit != 0 ? formatExit : reorderExit;
 }
@@ -456,6 +468,44 @@ int RunInherit(string file, string[] arguments)
     foreach (string a in arguments) psi.ArgumentList.Add(a);
     using Process p = Process.Start(psi)!;
     p.WaitForExit();
+    return p.ExitCode;
+}
+
+// Runs `dotnet format`, suppressing its noisy per-issue "Unable to fix X" lines
+// (and the generic workspace-load warning), and instead returns a single tidy
+// summary of the rule codes that have no auto-fix. This keeps the output clean
+// and unambiguous so an LLM agent doesn't mistake "Unable to fix" for a failure.
+int RunDotnetFormat(string[] arguments, out string manualSummary)
+{
+    Dictionary<string, int> unfixable = new(StringComparer.OrdinalIgnoreCase);
+    ProcessStartInfo psi = new("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+    foreach (string a in arguments) psi.ArgumentList.Add(a);
+
+    void Handle(string? line)
+    {
+        if (line is null) return;
+        Match m = Regex.Match(line, @"Unable to fix (\S+?)\.");
+        if (m.Success)
+        {
+            unfixable[m.Groups[1].Value] = unfixable.GetValueOrDefault(m.Groups[1].Value) + 1;
+            return; // swallow the raw line; summarized at the end
+        }
+        if (line.Contains("Warnings were encountered while loading the workspace")) return;
+        Console.WriteLine(line);
+    }
+
+    using Process p = Process.Start(psi)!;
+    p.OutputDataReceived += (_, e) => Handle(e.Data);
+    p.ErrorDataReceived += (_, e) => Handle(e.Data);
+    p.BeginOutputReadLine();
+    p.BeginErrorReadLine();
+    p.WaitForExit();
+
+    manualSummary = unfixable.Count == 0
+        ? ""
+        : string.Join(", ", unfixable
+            .OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(kv => kv.Value > 1 ? $"{kv.Key} ({kv.Value})" : kv.Key));
     return p.ExitCode;
 }
 
