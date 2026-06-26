@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RollForward>Major</RollForward>
+    <RootNamespace>iAmBipinPaul.DotNet.CodeStyle</RootNamespace>
+
+    <!-- Pack as a .NET global/local tool: `dotnet tool install ... csharp-style` -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>csharp-style</ToolCommandName>
+    <PackageId>iAmBipinPaul.DotNet.CodeStyle</PackageId>
+    <Version>1.0.0</Version>
+    <Title>iAmBipinPaul DotNet CodeStyle</Title>
+    <Description>Two-pass C# formatter: ReSharper cleanupcode member reorder + dotnet format --severity info, with .editorconfig / StyleCop / ReSharper scaffolding (`init`). Optimized for LLM-agent-friendly, explicit, deterministic code.</Description>
+    <Authors>Bipin Paul</Authors>
+    <Company>Bipin Paul</Company>
+    <Copyright>Copyright © 2026 Bipin Paul</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>csharp;editorconfig;dotnet-format;stylecop;resharper;cleanupcode;formatting;code-style;dotnet-tool</PackageTags>
+    <RepositoryUrl>https://github.com/iAmBipinPaul/iAmBipinPaul.DotNet.CodeStyle</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/iAmBipinPaul/iAmBipinPaul.DotNet.CodeStyle</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.203" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Templates travel inside the packed tool and are read at runtime. -->
+    <EmbeddedResource Include="templates\**\*" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
