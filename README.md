@@ -21,8 +21,10 @@ final word on whitespace.
 
 ## Install
 
+Available on [NuGet](https://www.nuget.org/packages/iAmBipinPaul.DotNet.CodeStyle/):
+
 ```bash
-# from NuGet (once published)
+# global tool
 dotnet tool install --global iAmBipinPaul.DotNet.CodeStyle
 
 # or as a repo-local tool
