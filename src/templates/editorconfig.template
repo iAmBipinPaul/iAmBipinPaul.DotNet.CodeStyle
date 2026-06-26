@@ -444,3 +444,23 @@ end_of_line = lf
 # Batch files
 [*.{cmd,bat}]
 end_of_line = crlf
+
+# ==============================================================================
+# BLAZOR CODE-BEHIND (must stay LAST so these keys win for *.razor.cs)
+# ==============================================================================
+# C# analyzers/fixers only see the .cs file, never the paired .razor markup that
+# shares the same partial class. So members referenced from markup look unused /
+# freely renamable / mergeable, and "fixing" them silently breaks the build.
+# Disable the three transformations that cross that markup boundary.
+[*.razor.cs]
+# "Use auto property" merges a backing field into the property (and rewrites it
+# to the `field` keyword), dropping fields that markup still binds to.
+dotnet_style_prefer_auto_properties = false
+dotnet_diagnostic.IDE0032.severity = none
+# "Remove unused/unread private member" — markup-only-used members look unused.
+dotnet_diagnostic.IDE0051.severity = none
+dotnet_diagnostic.IDE0052.severity = none
+# Naming rules (e.g. private field -> _underscore) would rename members that
+# markup binds by name (@CreateRequest, @paymentEntryTypeOptions, ...). A rename
+# can't be seen across the .razor boundary, so suppress auto-rename here.
+dotnet_diagnostic.IDE1006.severity = none
