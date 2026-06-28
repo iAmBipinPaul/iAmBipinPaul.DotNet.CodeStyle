@@ -59,9 +59,11 @@ csharp-style run             # afterwards: format changed files only
 - `<solution>.DotSettings` — the `ReorderOnly` cleanup profile + a member layout
   aligned to StyleCop (named to match your `.slnx`/`.sln` so ReSharper
   auto-loads it)
-- `Directory.Build.props` — adds `StyleCop.Analyzers` (member-ordering rules)
+- `Directory.Build.props` — adds `StyleCop.Analyzers` (member-ordering rules) and
+  `EnforceCodeStyleInBuild` (runs the `.editorconfig` rules at build, not just the IDE)
 - `.config/dotnet-tools.json` — pins the free `JetBrains.ReSharper.GlobalTools`
 - `.gitattributes` — cross-platform LF line endings
+- `AGENTS.md` — concise C# conventions for AI agents (merged, your own content kept)
 - `.csharp-style.json` — optional exclude globs (auto-fills `build/**` if it
   detects an isolated build project)
 
@@ -77,6 +79,14 @@ overwrite `.editorconfig`/`.DotSettings`).
 | `--no-reorder` | skip the cleanupcode pass (format only) |
 | `--exclude <glob>` | exclude paths (repeatable; merged with `.csharp-style.json`) |
 | `--solution <f>` | force a specific `.sln`/`.slnx` |
+
+### Agents vs. humans
+
+The scaffolded `AGENTS.md` tells AI agents to run `csharp-style run --no-reorder`
+— the format pass only: fast, no ReSharper CLI, and safe to repeat. Member
+ordering is left to the build/CI (StyleCop), so agents don't pay the heavier
+reorder cost on every run. To also reorder locally, run `csharp-style run` with
+no flag — it's thorough but loads the whole solution, so it takes a while.
 
 ## How it adapts to any repo
 - Auto-detects the solution (`*.slnx` preferred, else `*.sln`).

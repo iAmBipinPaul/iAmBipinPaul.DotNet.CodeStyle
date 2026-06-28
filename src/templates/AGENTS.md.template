@@ -3,12 +3,15 @@
 Style, naming, and member order are enforced by `.editorconfig` + StyleCop, so
 the build will flag them — no need to memorize them here.
 
-**When all your edits are done**, run once to auto-format and reorder the files
-you changed:
+**When all your edits are done**, run once to auto-format the files you changed:
 
 ```
-csharp-style run
+csharp-style run --no-reorder
 ```
+
+`--no-reorder` runs the format pass only — it's fast and needs no extra tooling.
+Member ordering is enforced separately by the build, so you don't need the
+slower reorder pass here. Run this once at the end, not after every edit.
 
 ## Two things the formatter can't catch — get them right while writing
 

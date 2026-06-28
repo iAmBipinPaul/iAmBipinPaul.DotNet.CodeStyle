@@ -486,9 +486,14 @@ IEnumerable<string> Git(params string[] arguments)
     ProcessStartInfo psi = new("git") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
     foreach (string a in arguments) psi.ArgumentList.Add(a);
     using Process p = Process.Start(psi)!;
-    string output = p.StandardOutput.ReadToEnd();
-    string error = p.StandardError.ReadToEnd();
+    // Drain both streams concurrently. Reading one to EOF before the other
+    // deadlocks if the child fills the second pipe's buffer first -- e.g. git's
+    // per-file "LF will be replaced by CRLF" warnings on stderr when many files
+    // have changed, which is why `run` hung on large staged sets.
+    Task<string> outTask = p.StandardOutput.ReadToEndAsync();
+    Task<string> errTask = p.StandardError.ReadToEndAsync();
     p.WaitForExit();
+    string output = outTask.Result, error = errTask.Result;
     if (p.ExitCode != 0)
         throw new InvalidOperationException($"git {string.Join(' ', arguments)} failed ({p.ExitCode}): {error}");
     return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
