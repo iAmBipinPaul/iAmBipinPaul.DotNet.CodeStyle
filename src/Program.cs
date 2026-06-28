@@ -7,7 +7,7 @@
 // Commands:
 //   csharp-style init                 scaffold .editorconfig, StyleCop props,
 //                                      ReSharper manifest, <sln>.DotSettings,
-//                                      .gitattributes into the current repo
+//                                      .gitattributes, AGENTS.md into the repo
 //   csharp-style run                  format changed files (default command)
 //   csharp-style run --all            format the entire solution
 //   csharp-style run --base <ref>     format files changed vs a git ref
@@ -91,6 +91,10 @@ int Init(string repoRoot, string? sln, bool overwrite)
     MergeManaged(Path.Combine(repoRoot, ".editorconfig"), Template("editorconfig.template"), splitAtFirstSection: true, overwrite);
     // .gitattributes — merged the same way (gitattributes is last-match-wins).
     MergeManaged(Path.Combine(repoRoot, ".gitattributes"), Template("gitattributes.template"), splitAtFirstSection: false, overwrite);
+    // AGENTS.md — C# conventions for AI agents. Merged like the others, but with
+    // HTML-comment markers so the managed block stays invisible in rendered
+    // Markdown and any hand-written guidance outside the block is preserved.
+    MergeManaged(Path.Combine(repoRoot, "AGENTS.md"), Template("AGENTS.md.template"), splitAtFirstSection: false, overwrite, "<!--", " -->");
     // <solution>.DotSettings  (ReorderOnly profile + StyleCop layout)
     MergeDotSettings(Path.Combine(repoRoot, settingsFile), Template("solution.DotSettings.template"), overwrite);
     // Directory.Build.props  (StyleCop package)
@@ -318,10 +322,11 @@ Regex GlobToRegex(string glob)
 // a delimited "managed block" kept at the END of the file. Both formats are
 // last-rule-wins, so our block overrides overlapping keys while leaving the
 // user's other settings intact. Re-running updates the block in place.
-void MergeManaged(string path, string template, bool splitAtFirstSection, bool overwrite)
+void MergeManaged(string path, string template, bool splitAtFirstSection, bool overwrite,
+                  string commentPrefix = "#", string commentSuffix = "")
 {
-    const string begin = "# >>> csharp-style (managed — re-init overwrites this block) >>>";
-    const string end = "# <<< csharp-style (managed) <<<";
+    string begin = commentPrefix + " >>> csharp-style (managed — re-init overwrites this block) >>>" + commentSuffix;
+    string end = commentPrefix + " <<< csharp-style (managed) <<<" + commentSuffix;
     string name = Path.GetFileName(path);
 
     // For .editorconfig, keep the preamble (header + `root = true`) out of the
@@ -389,25 +394,52 @@ void MergeDirectoryBuildProps(string path, string template)
 {
     if (!File.Exists(path)) { File.WriteAllText(path, template); Console.WriteLine("  + Directory.Build.props"); return; }
     string existing = File.ReadAllText(path);
-    if (existing.Contains("StyleCop.Analyzers")) { Console.WriteLine("  = Directory.Build.props (StyleCop already referenced, skipped)"); return; }
-
-    string snippet = """
-          <ItemGroup>
-            <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-              <PrivateAssets>all</PrivateAssets>
-              <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-            </PackageReference>
-          </ItemGroup>
-
-        """;
     int idx = existing.LastIndexOf("</Project>", StringComparison.OrdinalIgnoreCase);
-    if (idx >= 0)
+    if (idx < 0)
     {
-        existing = existing.Insert(idx, snippet);
-        File.WriteAllText(path, existing);
-        Console.WriteLine("  ~ Directory.Build.props (added StyleCop.Analyzers)");
+        Console.WriteLine("  ! Directory.Build.props exists but has no </Project>; add StyleCop + EnforceCodeStyleInBuild manually.");
+        return;
     }
-    else Console.WriteLine("  ! Directory.Build.props exists but has no </Project>; add StyleCop manually.");
+
+    // Ensure both pieces independently, so an existing file that already has one
+    // (e.g. StyleCop) still gets the other (EnforceCodeStyleInBuild) added.
+    StringBuilder insert = new();
+    List<string> added = [];
+
+    if (!existing.Contains("EnforceCodeStyleInBuild"))
+    {
+        insert.Append("""
+              <PropertyGroup>
+                <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+              </PropertyGroup>
+
+            """);
+        added.Add("EnforceCodeStyleInBuild");
+    }
+
+    if (!existing.Contains("StyleCop.Analyzers"))
+    {
+        insert.Append("""
+              <ItemGroup>
+                <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+                  <PrivateAssets>all</PrivateAssets>
+                  <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+                </PackageReference>
+              </ItemGroup>
+
+            """);
+        added.Add("StyleCop.Analyzers");
+    }
+
+    if (insert.Length == 0)
+    {
+        Console.WriteLine("  = Directory.Build.props (StyleCop + code-style already present, skipped)");
+        return;
+    }
+
+    existing = existing.Insert(idx, insert.ToString());
+    File.WriteAllText(path, existing);
+    Console.WriteLine($"  ~ Directory.Build.props (added {string.Join(" + ", added)})");
 }
 
 void MergeToolManifest(string path)
@@ -536,9 +568,10 @@ USAGE
   (run is the default command, so `csharp-style --all` works too.)
 
 WHAT init CREATES
-  .editorconfig, .gitattributes, <solution>.DotSettings (ReorderOnly profile +
-  StyleCop member layout), Directory.Build.props (StyleCop.Analyzers),
-  .config/dotnet-tools.json (free ReSharper CLI), .csharp-style.json (excludes).
+  .editorconfig, .gitattributes, AGENTS.md (C# conventions for AI agents),
+  <solution>.DotSettings (ReorderOnly profile + StyleCop member layout),
+  Directory.Build.props (StyleCop.Analyzers), .config/dotnet-tools.json (free
+  ReSharper CLI), .csharp-style.json (excludes).
 
 EXAMPLES
   csharp-style init                 # scaffold config into this repo

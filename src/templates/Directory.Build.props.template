@@ -1,5 +1,12 @@
 <Project>
 
+  <!-- Run the .editorconfig code-style (IDExxxx) rules at build time, not just
+       in the IDE. Severities are taken from .editorconfig; pairs with StyleCop
+       below so style + member-ordering violations surface in `dotnet build`/CI. -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
   <!-- StyleCop.Analyzers: adds the structural member-ordering rules that
        dotnet format / Roslyn do not provide. Individual rule severities are
        tuned in .editorconfig (most categories off; only ordering re-enabled).

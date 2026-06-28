@@ -1,0 +1,21 @@
+# Agent guide — C#
+
+Style, naming, and member order are enforced by `.editorconfig` + StyleCop, so
+the build will flag them — no need to memorize them here.
+
+**When all your edits are done**, run once to auto-format and reorder the files
+you changed:
+
+```
+csharp-style run
+```
+
+## Two things the formatter can't catch — get them right while writing
+
+- **EF Core queries:** for case-insensitive search use `x.ToLower().Contains(y)`
+  or `EF.Functions.Like(x, $"%{y}%")`. Never `Contains(y, StringComparison...)`,
+  `ToLowerInvariant()`, or `ToString(culture)` in a query — EF can't translate
+  them and the query fails at runtime.
+- **EF entities / Blazor `*.razor.cs`:** don't delete a private parameterless
+  ctor or backing fields (EF uses them via reflection), and don't rename/remove
+  members that `.razor` markup binds to. These compile but break at runtime.

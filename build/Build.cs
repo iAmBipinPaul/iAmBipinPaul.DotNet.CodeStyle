@@ -22,7 +22,7 @@ class Build : NukeBuild
         SourceDirectory / "iAmBipinPaul.DotNet.CodeStyle.csproj";
 
     [Parameter("NuGet API Key for publishing the tool")] readonly string NuGetPAT;
-    [Parameter("Package version (default: 1.0.2)")] readonly string PackageVersion = "1.0.4";
+    [Parameter("Package version (default: 1.0.2)")] readonly string PackageVersion = "1.0.5";
 
     #region NuGet
 
